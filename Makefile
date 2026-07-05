@@ -44,6 +44,28 @@ uninstall: ## Remove all DOCKER_TOOLS from /usr/local/bin
 	@for t in $(DOCKER_TOOLS); do $(MAKE) -C $$t uninstall; done
 	@for t in $(SCRIPT_TOOLS); do $(MAKE) -C $$t uninstall; done
 
+##@ Scaffold
+
+# Bootstrap a new skill-aware tool in toolbox/ and agent-skills-toolbox/skills/.
+# Usage: make new-tool NAME=my-tool TYPE=script|docker DESC="one-line description"
+#   NAME  required  kebab-case tool name
+#   TYPE  optional  script (default) or docker
+#   DESC  optional  one-line description for SKILL.md and README.md
+.PHONY: new-tool
+new-tool: ## Scaffold a new skill-aware tool: make new-tool NAME=<name> [TYPE=script|docker] [DESC="..."]
+	@[ -n "$(NAME)" ] || { printf "$(RED)ERROR:$(RESET) NAME is required. Usage: make new-tool NAME=<name> [TYPE=script|docker] [DESC=\"...\"]\n"; exit 1; }
+	@bash scripts/scaffold-tool.sh "$(NAME)" \
+	  $(if $(TYPE),--type "$(TYPE)") \
+	  $(if $(DESC),--description "$(DESC)") \
+	  --toolbox-dir "$(CURDIR)" \
+	  --no-makefile-patch
+
+##@ Skill distribution
+
+.PHONY: sync-skill
+sync-skill: ## Sync all tools into agent-skills-toolbox (delegates to */Makefile)
+	@for t in $(DOCKER_TOOLS) $(SCRIPT_TOOLS); do $(MAKE) -C $$t sync-skill; done
+
 ##@ docker stuff (delegates to */Makefile)
 
 .PHONY: docker-build

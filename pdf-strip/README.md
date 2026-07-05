@@ -4,6 +4,8 @@ Strips all metadata from PDF files. Removes both the legacy `/Info` dictionary (
 
 Running `pdf-strip <file>` strips metadata by default and writes `<base>.stripped.pdf` alongside the original. Use `--check` to inspect any found metadata without modifying.
 
+> **Also available as an [Agent Skill](#claude-code-skill)** -- install it to strip PDF metadata directly from Claude Code with no terminal required. Use the `/pdf-strip` slash command or just describe what you want and your AI Agent will handle it.
+
 <details>
 <summary><b>Why strip PDF metadata anyway?</b>
 </summary>
@@ -102,11 +104,18 @@ printf "$(wc -c < ${EXAMPLE_STRIPPED_PDF}) bytes in ${EXAMPLE_PDF} after strippi
 Here are a few examples of how to use this tool. 
 
 ```sh
-pdf-strip example.pdf              # strip metadata (default)
-pdf-strip *.pdf                    # strip multiple files
-pdf-strip ./my-docs/               # strip all PDFs in a directory (recursive)
-pdf-strip --check example.pdf      # check for metadata without stripping
-pdf-strip --check ./my-docs/       # check all PDFs in a directory
+pdf-strip example.pdf                              # strip metadata (default)
+pdf-strip *.pdf                                    # strip multiple files
+pdf-strip ./my-docs/                               # strip all PDFs in a directory (recursive)
+pdf-strip --check example.pdf                      # check for metadata without stripping
+pdf-strip --check ./my-docs/                       # check all PDFs in a directory
+```
+
+When using the Claude Code skill, you can also pass a URL directly and Claude will fetch the file for you:
+
+```
+/pdf-strip https://alertstack.io/pdf-strip/test/example.pdf
+/pdf-strip --check https://alertstack.io/pdf-strip/test/example.pdf
 ```
 
 Output is written alongside each original file as `<base>.stripped.pdf`. Originals are never modified.
@@ -138,6 +147,14 @@ pdf-strip <directory>               Strip every .pdf found recursively
 pdf-strip --check <file.pdf>        Check for metadata, print findings
 pdf-strip --check <directory>       Check every .pdf found recursively
 pdf-strip -- [args...]              Pass args directly to the container entrypoint
+```
+
+When invoked via the Claude Code skill, a URL is also accepted as input -- Claude fetches the
+file and then strips or checks it:
+
+```
+/pdf-strip https://alertstack.io/pdf-strip/test/example.pdf
+/pdf-strip --check https://alertstack.io/pdf-strip/test/example.pdf
 ```
 
 ### Modes
@@ -256,6 +273,78 @@ make docker-build
 - `bash` 4+
 - `make` (for Makefile targets)
 - [pikepdf](https://pikepdf.readthedocs.io/) (for pdf functionality)
+
+---
+
+## Claude Code skill
+
+<details>
+<summary>Install the <code>/pdf-strip</code> slash command for Claude Code</summary>
+
+This repository ships a `/pdf-strip` slash command skill for [Claude Code](https://claude.ai/code)
+that lets Claude strip PDF metadata directly -- no terminal required. Just describe what you want
+and Claude will invoke the skill automatically.
+
+### What it accepts
+
+| Input | Example |
+|---|---|
+| Single file | `report.pdf` |
+| Multiple files | `file1.pdf file2.pdf` |
+| Directory | `./my-docs/` |
+| URL | `https://example.com/report.pdf` |
+| Check mode | `--check report.pdf` |
+
+### Invoking the skill
+
+Use the slash command directly:
+
+```
+/pdf-strip report.pdf
+/pdf-strip --check report.pdf
+/pdf-strip ./my-docs/
+/pdf-strip https://example.com/report.pdf
+```
+
+Or just describe what you want in natural language -- Claude will invoke the skill automatically:
+
+> *"Strip the metadata from this PDF before I share it"*
+>
+> *"Check what's hidden in report.pdf"*
+>
+> *"Clean all the PDFs in my-docs/"*
+>
+> *"Fetch this PDF from the URL and strip its metadata"*
+
+### Installing the skill
+
+#### Option A -- sync locally via `make`
+
+```bash
+# from inside the pdf-strip directory
+make sync-skill
+```
+
+This syncs `pdf-strip`, `SKILL.md`, and `README.md` to:
+
+```
+~/Code/agent-skills-toolbox/skills/pdf-strip/
+```
+
+Override the target directory with `SKILLS_DIR`:
+
+```bash
+make sync-skill SKILLS_DIR=/path/to/your/project/.claude/skills/pdf-strip
+```
+
+#### Option B -- copy manually
+
+```bash
+mkdir -p .claude/skills/pdf-strip
+cp pdf-strip SKILL.md README.md .claude/skills/pdf-strip/
+```
+
+</details>
 
 [ghcr.io/rondomondo/pdf-strip]: https://ghcr.io/rondomondo/pdf-strip:latest
 

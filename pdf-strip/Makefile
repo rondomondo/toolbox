@@ -9,6 +9,7 @@ SHELL         := /bin/bash
 BOLD   := \033[1m
 GREEN  := \033[32m
 CYAN   := \033[36m
+RED    := \033[31m
 YELLOW := \033[33m
 RESET  := \033[0m
 
@@ -18,6 +19,11 @@ DEBUG  := false
 PDF_STRIP        := pdf-strip
 DESTDIR          := /usr/local/bin
 PDF_STRIP_TARGET := $(DESTDIR)/$(PDF_STRIP)
+
+# -- Skill distribution ---------------------------------------
+SKILL_NAME  := pdf-strip
+SKILLS_DIR  ?= $(HOME)/Code/agent-skills-toolbox/skills/$(SKILL_NAME)
+SKILL_FILES := $(PDF_STRIP) strip.py pyproject.toml SKILL.md README.md test
 
 # -- Docker ---------------------------------------------------
 REGISTRY           ?= ghcr.io
@@ -37,6 +43,22 @@ help: ## Show this help message
 	  /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0,5) } \
 	  /^[a-zA-Z0-9_-]+:.*?##/ { printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2 }' \
 	  $(MAKEFILE_LIST)
+
+##@ Python / uv
+
+.PHONY: venv
+venv: ## Create .venv and install pikepdf via uv (local dev, non-sandbox)
+	uv sync
+	@printf "$(GREEN)venv ready$(RESET) -- activate with: source .venv/bin/activate\n"
+
+.PHONY: run
+run: ## Run strip.py directly via uv (auto-installs deps from inline script metadata)
+	uv run strip.py
+
+.PHONY: check-uv
+check-uv: ## Verify uv is available
+	@command -v uv >/dev/null 2>&1 || { printf "$(RED)uv not found$(RESET) -- install from https://docs.astral.sh/uv/\n" >&2; exit 1; }
+	@printf "$(GREEN)uv found$(RESET): $$(uv --version)\n"
 
 ##@ Install
 
@@ -133,6 +155,23 @@ usage: ## Print usage examples
 	@printf "  pdf-strip --check /path/to/dir\n\n"
 	@printf "$(BOLD)Install pdf-strip script:$(RESET)\n"
 	@printf "  make install\n\n"
+
+##@ Skill distribution
+
+.PHONY: sync-skill
+sync-skill: ## Sync this repo into SKILLS_DIR (default: ~/Code/agent-skills-toolbox/skills/pdf-strip)
+	@printf "$(CYAN)Syncing to$(RESET) $(SKILLS_DIR)\n"
+	@mkdir -p $(SKILLS_DIR)
+	@ok=0; fail=0; \
+	for f in $(SKILL_FILES); do \
+		if /bin/cp -R $$f $(SKILLS_DIR)/ 2>/dev/null; then \
+			printf "  $(GREEN)ok$(RESET)  $$f\n"; ok=$$((ok+1)); \
+		else \
+			printf "  $(RED)FAIL$(RESET)  $$f\n"; fail=$$((fail+1)); \
+		fi \
+	done; \
+	printf "\n  $(BOLD)$$ok synced, $$fail failed$(RESET) -> $(SKILLS_DIR)\n"; \
+	[ $$fail -eq 0 ]
 
 ##@ Cleanup
 

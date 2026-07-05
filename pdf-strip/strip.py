@@ -1,4 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["pikepdf"]
+# ///
 """Strip or check document-level metadata from a PDF.
 
 Removes both metadata stores:
