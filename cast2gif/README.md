@@ -5,6 +5,8 @@
 which in turn incorporates [agg](https://github.com/asciinema/agg)
 (asciinema GIF generator).
 
+> **Also available as an [Agent Skill](#claude-code-skill)** -- install it to convert terminal recordings directly from Claude Code with no terminal required. Use the `/cast2gif` slash command or just describe what you want and your AI Agent will handle it.
+
 It converts [asciinema](https://asciinema.org/) `.cast` recording files into
 GIF animations. Running agg directly as a container requires manually wiring up
 Docker volume mounts so the container can read your cast file and write output
@@ -174,3 +176,68 @@ make docker-push  REGISTRY=docker.io
 - `bash` 4+
 - `make` (for Makefile targets)
 - `asciinema` (to record `.cast` files)
+
+---
+
+## Claude Code skill
+
+<details>
+<summary>Install the <code>/cast2gif</code> slash command for Claude Code</summary>
+
+This repository ships a `/cast2gif` slash command skill for [Claude Code](https://claude.ai/code)
+that lets Claude convert terminal recordings to GIFs -- no terminal required. Just describe what
+you want and Claude will invoke the skill automatically.
+
+### What it accepts
+
+| Input | Example |
+|---|---|
+| Single file | `demo.cast` |
+| Directory | `recordings/` |
+| Multiple files | `m0.cast m1.cast m2.cast` |
+
+### Invoking the skill
+
+Use the slash command directly:
+
+```
+/cast2gif demo.cast
+/cast2gif recordings/
+/cast2gif m0.cast m1.cast
+```
+
+Or just describe what you want in natural language -- Claude will invoke the skill automatically:
+
+> *"Convert demo.cast to a GIF"*
+>
+> *"Turn all the cast files in recordings/ into animated GIFs"*
+
+### Installing the skill
+
+#### Option A -- sync locally via `make`
+
+```bash
+# from inside the cast2gif directory
+make sync-skill
+```
+
+This syncs `cast2gif`, `SKILL.md`, and `README.md` to:
+
+```
+~/Code/agent-skills-toolbox/skills/cast2gif/
+```
+
+Override the target directory with `SKILLS_DIR`:
+
+```bash
+make sync-skill SKILLS_DIR=/path/to/your/project/.claude/skills/cast2gif
+```
+
+#### Option B -- copy manually
+
+```bash
+mkdir -p .claude/skills/cast2gif
+cp cast2gif SKILL.md README.md .claude/skills/cast2gif/
+```
+
+</details>

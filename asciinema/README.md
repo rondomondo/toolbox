@@ -2,6 +2,8 @@
 
 [asciinema-rec](asciinema-rec) is a convenience wrapper around [asciinema](https://asciinema.org/) (via [uvx](https://docs.astral.sh/uv/)) for recording terminal sessions to `.cast` files.
 
+> **Also available as an [Agent Skill](#claude-code-skill)** -- install it to record terminal sessions directly from Claude Code with no terminal required. Use the `/asciinema` slash command or just describe what you want and your AI Agent will handle it.
+
 ## Why this exists
 
 Recording terminal sessions with raw `asciinema` requires remembering a handful of flags every time, and the output path handling is inconsistent across environments:
@@ -156,8 +158,76 @@ uvx asciinema upload session.cast
 ## Makefile targets
 
 ```
-make help       Show all targets
-make install    Install asciinema-rec to /usr/local/bin
-make uninstall  Remove asciinema-rec from /usr/local/bin
-make usage      Show asciinema-rec usage
+make help         Show all targets
+make install      Install asciinema-rec to /usr/local/bin
+make uninstall    Remove asciinema-rec from /usr/local/bin
+make usage        Show asciinema-rec usage
+make sync-skill   Sync skill files to ~/Code/agent-skills-toolbox/skills/asciinema
 ```
+
+---
+
+## Claude Code skill
+
+<details>
+<summary>Install the <code>/asciinema</code> slash command for Claude Code</summary>
+
+This repository ships a `/asciinema` slash command skill for [Claude Code](https://claude.ai/code)
+that lets Claude record and replay terminal sessions -- no terminal required. Just describe what
+you want and Claude will invoke the skill automatically.
+
+### What it accepts
+
+| Input | Example |
+|---|---|
+| Interactive session | `session.cast` |
+| Command recording | `demo.cast bash -c 'ls -la'` |
+| Replay | `play session.cast` |
+
+### Invoking the skill
+
+Use the slash command directly:
+
+```
+/asciinema session.cast
+/asciinema demo.cast bash -c 'ls -la'
+/asciinema play session.cast
+```
+
+Or just describe what you want in natural language -- Claude will invoke the skill automatically:
+
+> *"Record a terminal session to demo.cast"*
+>
+> *"Capture running make test as a cast file"*
+>
+> *"Play back session.cast"*
+
+### Installing the skill
+
+#### Option A -- sync locally via `make`
+
+```bash
+# from inside the asciinema directory
+make sync-skill
+```
+
+This syncs `asciinema-rec`, `SKILL.md`, and `README.md` to:
+
+```
+~/Code/agent-skills-toolbox/skills/asciinema/
+```
+
+Override the target directory with `SKILLS_DIR`:
+
+```bash
+make sync-skill SKILLS_DIR=/path/to/your/project/.claude/skills/asciinema
+```
+
+#### Option B -- copy manually
+
+```bash
+mkdir -p .claude/skills/asciinema
+cp asciinema-rec SKILL.md README.md .claude/skills/asciinema/
+```
+
+</details>

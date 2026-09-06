@@ -9,6 +9,7 @@ SHELL         := /bin/bash
 BOLD   := \033[1m
 GREEN  := \033[32m
 CYAN   := \033[36m
+RED    := \033[31m
 YELLOW := \033[33m
 RESET  := \033[0m
 
@@ -18,6 +19,11 @@ DEBUG  := false
 CAST2GIF        := cast2gif
 DESTDIR         := /usr/local/bin
 CAST2GIF_TARGET := $(DESTDIR)/$(CAST2GIF)
+
+# -- Skill distribution ---------------------------------------
+SKILL_NAME  := cast2gif
+SKILLS_DIR  ?= $(HOME)/Code/agent-skills-toolbox/skills/$(SKILL_NAME)
+SKILL_FILES := $(CAST2GIF) SKILL.md README.md
 
 # -- Docker ---------------------------------------------------
 REGISTRY          ?= ghcr.io
@@ -114,3 +120,20 @@ docker-clean: ## Remove the local cast2gif Docker image
 	@docker rmi $(AGG_IMAGE_NAME):$(AGG_IMAGE_TAG) 2>/dev/null && \
 	  printf "$(GREEN)Removed$(RESET) $(AGG_IMAGE_NAME):$(AGG_IMAGE_TAG)\n" || \
 	  printf "$(YELLOW)Image not found$(RESET) $(AGG_IMAGE_NAME):$(AGG_IMAGE_TAG)\n"
+
+##@ Skill distribution
+
+.PHONY: sync-skill
+sync-skill: ## Sync this repo into SKILLS_DIR (default: ~/Code/agent-skills-toolbox/skills/cast2gif)
+	@printf "$(CYAN)Syncing to$(RESET) $(SKILLS_DIR)\n"
+	@mkdir -p $(SKILLS_DIR)
+	@ok=0; fail=0; \
+	for f in $(SKILL_FILES); do \
+		if /bin/cp -R $$f $(SKILLS_DIR)/ 2>/dev/null; then \
+			printf "  $(GREEN)ok$(RESET)  $$f\n"; ok=$$((ok+1)); \
+		else \
+			printf "  $(RED)FAIL$(RESET)  $$f\n"; fail=$$((fail+1)); \
+		fi \
+	done; \
+	printf "\n  $(BOLD)$$ok synced, $$fail failed$(RESET) -> $(SKILLS_DIR)\n"; \
+	[ $$fail -eq 0 ]

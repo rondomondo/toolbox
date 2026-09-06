@@ -8,6 +8,8 @@ It adds three main capabilities to the base image functionality:
 2) It includes baked in extra utilities useful in container workflows: make, docker-compose, system utilities, zsh and themes, etc.
 3) It also includes additional fonts and themes for recordings.
 
+> **Also available as an [Agent Skill](#claude-code-skill)** -- install it to produce terminal GIF recordings directly from Claude Code with no terminal required. Use the `/vhs` slash command or just describe what you want and your AI Agent will handle it.
+
 ## What is VHS
 [VHS](https://github.com/charmbracelet/vhs) converts [.tape](https://github.com/charmbracelet/vhs#tutorial) script files into GIF (or other) recordings. Running it
 directly as a container requires manually wiring up Docker volume mounts so the
@@ -188,3 +190,68 @@ make docker-push  REGISTRY=docker.io
 - Docker (running locally)
 - `bash` 4+
 - `make` (for Makefile targets)
+
+---
+
+## Claude Code skill
+
+<details>
+<summary>Install the <code>/vhs</code> slash command for Claude Code</summary>
+
+This repository ships a `/vhs` slash command skill for [Claude Code](https://claude.ai/code)
+that lets Claude produce terminal GIF recordings -- no terminal required. Just describe what
+you want and Claude will invoke the skill automatically.
+
+### What it accepts
+
+| Input | Example |
+|---|---|
+| Single tape file | `demo.tape` |
+| Directory | `test/` |
+| Multiple files | `m0.tape m1.tape m2.tape` |
+
+### Invoking the skill
+
+Use the slash command directly:
+
+```
+/vhs demo.tape
+/vhs test/
+/vhs m0.tape m1.tape
+```
+
+Or just describe what you want in natural language -- Claude will invoke the skill automatically:
+
+> *"Record a terminal GIF of the make install command"*
+>
+> *"Convert test/demo.tape to an animated GIF"*
+
+### Installing the skill
+
+#### Option A -- sync locally via `make`
+
+```bash
+# from inside the vhs directory
+make sync-skill
+```
+
+This syncs `vhs-rec`, `SKILL.md`, and `README.md` to:
+
+```
+~/Code/agent-skills-toolbox/skills/vhs/
+```
+
+Override the target directory with `SKILLS_DIR`:
+
+```bash
+make sync-skill SKILLS_DIR=/path/to/your/project/.claude/skills/vhs
+```
+
+#### Option B -- copy manually
+
+```bash
+mkdir -p .claude/skills/vhs
+cp vhs-rec SKILL.md README.md .claude/skills/vhs/
+```
+
+</details>

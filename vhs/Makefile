@@ -9,6 +9,7 @@ SHELL         := /bin/bash
 BOLD   := \033[1m
 GREEN  := \033[32m
 CYAN   := \033[36m
+RED    := \033[31m
 YELLOW := \033[33m
 RESET  := \033[0m
 
@@ -16,6 +17,11 @@ RESET  := \033[0m
 VHS_REC        := vhs-rec
 DESTDIR        := /usr/local/bin
 VHS_REC_TARGET := $(DESTDIR)/$(VHS_REC)
+
+# -- Skill distribution ---------------------------------------
+SKILL_NAME  := vhs
+SKILLS_DIR  ?= $(HOME)/Code/agent-skills-toolbox/skills/$(SKILL_NAME)
+SKILL_FILES := $(VHS_REC) SKILL.md README.md
 
 # -- Docker ---------------------------------------------------
 REGISTRY       ?= ghcr.io
@@ -145,3 +151,20 @@ docker-clean: ## Remove the local vhs-rec Docker image
 	@docker rmi $(VHS_IMAGE_NAME):$(VHS_IMAGE_TAG) 2>/dev/null && \
 	  printf "$(GREEN)Removed$(RESET) $(VHS_IMAGE_NAME):$(VHS_IMAGE_TAG)\n" || \
 	  printf "$(YELLOW)Image not found$(RESET) $(VHS_IMAGE_NAME):$(VHS_IMAGE_TAG)\n"
+
+##@ Skill distribution
+
+.PHONY: sync-skill
+sync-skill: ## Sync this repo into SKILLS_DIR (default: ~/Code/agent-skills-toolbox/skills/vhs)
+	@printf "$(CYAN)Syncing to$(RESET) $(SKILLS_DIR)\n"
+	@mkdir -p $(SKILLS_DIR)
+	@ok=0; fail=0; \
+	for f in $(SKILL_FILES); do \
+		if /bin/cp -R $$f $(SKILLS_DIR)/ 2>/dev/null; then \
+			printf "  $(GREEN)ok$(RESET)  $$f\n"; ok=$$((ok+1)); \
+		else \
+			printf "  $(RED)FAIL$(RESET)  $$f\n"; fail=$$((fail+1)); \
+		fi \
+	done; \
+	printf "\n  $(BOLD)$$ok synced, $$fail failed$(RESET) -> $(SKILLS_DIR)\n"; \
+	[ $$fail -eq 0 ]

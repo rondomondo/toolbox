@@ -1,5 +1,5 @@
 # ============================================================
-# asciinema-rec -- Makefile
+# scripts -- Makefile
 # ============================================================
 .DEFAULT_GOAL := help
 MAKEFLAGS     += --no-print-directory
@@ -14,13 +14,13 @@ YELLOW := \033[33m
 RESET  := \033[0m
 
 # -- Paths ----------------------------------------------------
-SCRIPT  := asciinema-rec
-DESTDIR := /usr/local/bin
+SCRIPT        := git-orphan-reset
+DESTDIR       := /usr/local/sbin
 
 # -- Skill distribution ---------------------------------------
-SKILL_NAME  := asciinema
+SKILL_NAME  := git-orphan-reset
 SKILLS_DIR  ?= $(HOME)/Code/agent-skills-toolbox/skills/$(SKILL_NAME)
-SKILL_FILES := $(SCRIPT) SKILL.md README.md
+SKILL_FILES := $(SCRIPT).sh SKILL.md README.md
 
 # -- Help -----------------------------------------------------
 .PHONY: help
@@ -32,26 +32,30 @@ help: ## Show this help message
 
 ##@ Install
 
+# Copies git-orphan-reset.sh into $(DESTDIR) and creates a symlink without the
+# .sh extension so the tool is invokable as `git-orphan-reset` on PATH.
 .PHONY: install
-install: ## Install asciinema-rec to $(DESTDIR)
-	@install -m 755 $(SCRIPT) $(DESTDIR)/$(SCRIPT)
-	@printf "$(GREEN)Installed$(RESET) $(DESTDIR)/$(SCRIPT)\n"
+install: ## Install git-orphan-reset to $(DESTDIR)
+	@install -m 755 $(SCRIPT).sh $(DESTDIR)/$(SCRIPT).sh
+	@ln -sf $(DESTDIR)/$(SCRIPT).sh $(DESTDIR)/$(SCRIPT)
+	@printf "$(GREEN)Installed$(RESET) $(DESTDIR)/$(SCRIPT) -> $(DESTDIR)/$(SCRIPT).sh\n"
 
+# Removes both the .sh file and the extension-less symlink from $(DESTDIR).
 .PHONY: uninstall
-uninstall: ## Remove asciinema-rec from $(DESTDIR)
-	@rm -f $(DESTDIR)/$(SCRIPT)
+uninstall: ## Remove git-orphan-reset from $(DESTDIR)
+	@rm -f $(DESTDIR)/$(SCRIPT) $(DESTDIR)/$(SCRIPT).sh
 	@printf "$(GREEN)Removed$(RESET) $(DESTDIR)/$(SCRIPT)\n"
 
 ##@ Usage
 
 .PHONY: usage
-usage: ## Show asciinema-rec usage
-	@bash $(SCRIPT)
+usage: ## Show git-orphan-reset usage
+	@bash $(SCRIPT).sh --help 2>&1 || true
 
 ##@ Skill distribution
 
 .PHONY: sync-skill
-sync-skill: ## Sync this repo into SKILLS_DIR (default: ~/Code/agent-skills-toolbox/skills/asciinema)
+sync-skill: ## Sync this repo into SKILLS_DIR (default: ~/Code/agent-skills-toolbox/skills/git-orphan-reset)
 	@printf "$(CYAN)Syncing to$(RESET) $(SKILLS_DIR)\n"
 	@mkdir -p $(SKILLS_DIR)
 	@ok=0; fail=0; \
