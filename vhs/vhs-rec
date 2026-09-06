@@ -1,0 +1,186 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ANSI color codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+RESET='\033[0m'
+
+# Set DEBUG=true/1 to enable verbose logging of invocation args via the log() helper.
+USE_LOGGING="${DEBUG:-false}"
+case "${USE_LOGGING}" in
+  true|1)  USE_LOGGING=true  ;;
+  false|0) USE_LOGGING=false ;;
+  *) printf "ERROR: DEBUG must be true/false/1/0, got '%s'\n" "${USE_LOGGING}" >&2; exit 1 ;;
+esac
+SCRIPT_NAME=$(basename "$0")
+
+ok() { ${USE_LOGGING} && printf "${BOLD}[$SCRIPT_NAME:$HOSTNAME]${RESET} ${GREEN}${*}${RESET}\n" >&2; return 0; }
+warn() { ${USE_LOGGING} && printf "${BOLD}[$SCRIPT_NAME:$HOSTNAME]${RESET} ${YELLOW}${*}${RESET}\n" >&2; return 0; }
+fail() { ${USE_LOGGING} && printf "${BOLD}[$SCRIPT_NAME:$HOSTNAME]${RESET} ${RED}${*}${RESET}\n" >&2; return 0; }
+log()  { ${USE_LOGGING} && printf "${BOLD}[$SCRIPT_NAME:$HOSTNAME]${RESET} ${CYAN}${*}${RESET}\n" >&2; return 0; }
+
+log "invoked with args '$*'" 
+
+if ! command -v docker &>/dev/null; then
+  echo "Error: docker is required but not found in PATH" >&2
+  exit 1
+fi
+
+usage() {
+  cat <<'EOF'
+vhs_rec - a convenience wrapper around the rondomondo/vhs-rec Docker image, which
+is built upon VHS - https://github.com/charmbracelet/vhs.
+
+It adds three main capabilities to the base image functionality:
+1) You can use it to record Docker-related workflows that normally run externally.
+2) It includes extra utilities useful in container workflows: make, docker-compose,
+   system utilities, zsh and themes, etc.
+3) It includes additional fonts and themes for recordings.
+
+VHS converts .tape script files into GIF (or other) recordings. Running it
+directly as a container requires manually wiring up Docker volume mounts so the
+container can read your tape file and write output back to the host.
+
+This wrapper handles all of that automatically: it rewrites the Output line in
+your tape file to the correct filename and mounts the right directory, so you
+can pass a single .tape file, multiple .tape files, or a directory full of .tape
+files and get GIF files generated for all of them.
+
+Note: calling with '--' passes everything through directly to the vhs app.
+
+Usage:
+  vhs-rec                          Show this help, then the vhs built-in help
+  vhs-rec -h | --help              Show this help only
+  vhs-rec <input.tape>             Convert one tape file; output defaults to <input>.gif
+  vhs-rec <input.tape> <out.gif>   Convert one tape file with an explicit output name
+  vhs-rec <directory>              Convert every .tape file in a directory
+  vhs-rec <tape1> <tape2> ...      Convert multiple tape files (output defaults per file)
+  vhs-rec -- [args...]             Pass args directly to vhs inside Docker, with the
+                                   current directory mounted at /vhs. Use this to access
+                                   vhs sub-commands or flags not covered by this wrapper
+                                   (e.g. "vhs-rec -- validate my.tape").
+
+The Output line inside each .tape file is rewritten automatically to match the
+derived or explicit output filename before vhs runs.
+
+EOF
+}
+
+find_docker_socket() {
+    local candidates=(
+        "/var/run/docker.sock"
+        "/run/docker.sock"
+        "${HOME}/.docker/run/docker.sock"
+        "/run/user/$(id -u)/docker.sock"
+    )
+    for sock in "${candidates[@]}"; do
+        if [[ -S "$sock" ]]; then
+            echo "$sock"
+            return 0
+        fi
+    done
+    return 1
+}
+
+DOCKER_SOCK=$(find_docker_socket)
+# Extra docker flags shared by all container invocations:
+#   - mounts $PWD at the same path so absolute paths inside the container match the host
+#   - forwards the Docker socket so the container can itself run docker commands
+#   - exposes HOST_PWD and DOCKER_SOCK as env vars for entrypoint scripts inside the image
+DOCKER_EXTRA_ARGS=(
+  "--volume $PWD:$PWD"
+  "--volume $DOCKER_SOCK:/var/run/docker.sock"
+  "--env HOST_PWD=$PWD"
+  "--env DOCKER_SOCK=$DOCKER_SOCK"
+)
+
+# Show vhs help by running the image with no tape file argument.
+show_help() {
+  cat <<'EOF'
+---- vhs built-in help follows ----
+
+EOF
+  # shellcheck disable=SC2086
+  docker run --rm \
+    ${DOCKER_EXTRA_ARGS[*]:-} \
+    ghcr.io/rondomondo/vhs-rec:latest
+}
+
+# Pass args directly to vhs inside Docker. $PWD is mounted at /vhs in the container.
+# Called both for passthrough mode (user prefixes args with --) and by convert_one.
+run_vhs_raw() {
+  # shellcheck disable=SC2086
+  docker run --rm \
+    --volume "${PWD}:/vhs" \
+    ${DOCKER_EXTRA_ARGS[*]:-} \
+    ghcr.io/rondomondo/vhs-rec:latest \
+    "$@"
+}
+
+# Rewrite the Output line in the tape file to the resolved output path, then run vhs.
+# The sed rewrite ensures the tape file is self-consistent; -o is also passed to vhs
+# as an explicit override in case the image ignores or overwrites the tape Output line.
+convert_one() {
+  local input="$1" output="${2:-}"
+
+  if [[ ! -f "$input" ]]; then
+    fail "Error: not a file: $input" >&2
+    return 1
+  fi
+
+  if [[ -z "$output" ]]; then
+    output="${input%.tape}.gif"
+  fi
+
+  log "converting: $input -> $output"
+
+  sed -i '' "s|^Output .*|Output $output|" "$input"
+  run_vhs_raw "$input" "-o" "$output"
+  test -e "$output" && ok "converted:  $input -> $output" || { fail "$output not found"; return 1; }
+}
+
+# ---- dispatch -------------------------------------------------------
+
+if [[ $# -eq 0 ]]; then
+  usage
+  show_help
+  exit 0
+fi
+
+if [[ "$1" == "--" ]]; then
+  run_vhs_raw "${@:2}"
+  exit 0
+fi
+
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+initial_pwd=$(pwd)
+
+if [[ $# -eq 2 && ! -d "$1" ]]; then
+  # Exactly two args and first is not a directory: input + explicit output
+  convert_one "$1" "$2"
+elif [[ $# -eq 1 && -d "$1" ]]; then
+  # Single directory arg: recursively convert every .tape beneath it
+  dir="$(cd "$1" && pwd)"
+  mapfile -t files < <(find "$dir" -type f -name "*.tape" | sort)
+
+  if [[ ${#files[@]} -eq 0 ]]; then
+    fail "No .tape files found in $1" >&2
+    exit 1
+  fi
+  for arg in "${files[@]}"; do
+    convert_one "${arg#"$initial_pwd/"}"
+  done
+else
+  # One tape file, or three-or-more tape files: treat every arg as an input
+  for arg in "$@"; do
+    convert_one "${arg#"$initial_pwd/"}"
+  done
+fi
